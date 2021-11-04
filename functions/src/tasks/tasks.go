@@ -1,83 +1,85 @@
 package main
 
 import (
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
+	"log"
+	"net/http"
+
 	"github.com/bymi15/go-mongo-serverless-crud-boilerplate/db"
 	"github.com/bymi15/go-mongo-serverless-crud-boilerplate/db/models"
 	"github.com/bymi15/go-mongo-serverless-crud-boilerplate/functions/src/utils"
 )
 
-func handler(request events.APIGatewayProxyRequest) (*events.APIGatewayProxyResponse, error) {
+func handler(w http.ResponseWriter, r *http.Request) {
 	client := db.InitMongoClient()
-	id := request.QueryStringParameters["id"]
-	var response *events.APIGatewayProxyResponse
+	id := r.URL.Query().Get("id")
 
-	switch request.HTTPMethod {
+	utils.SetDefaultHeaders(w)
+	var response []byte
+
+	switch r.Method {
 	case "GET":
 		if id != "" {
 			// Get by id
 			task, err := client.TaskService.GetTaskById(id)
 			if err != nil {
-				return &events.APIGatewayProxyResponse{
-					StatusCode: 500,
-				}, err
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
 			}
-			response = utils.CreateApiResponse(task, 200)
+			w.WriteHeader(http.StatusOK)
+			response = utils.CreateApiResponse(task)
 		} else {
 			// Get all
 			tasks, err := client.TaskService.GetTasks()
 			if err != nil {
-				return &events.APIGatewayProxyResponse{
-					StatusCode: 500,
-				}, err
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
 			}
-			response = utils.CreateApiResponse(tasks, 200)
+			w.WriteHeader(http.StatusOK)
+			response = utils.CreateApiResponse(tasks)
 		}
 	case "POST":
-		var task models.Task
-		err := utils.ParseBody(request.Body, &task)
+		task := models.NewTask()
+		err := utils.ParseRequestBody(r, &task)
 		if err != nil {
-			return &events.APIGatewayProxyResponse{
-				StatusCode: 400,
-			}, err
+			log.Printf("Error: %v", err)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
 		}
 		err = client.TaskService.CreateTask(task)
 		if err != nil {
-			return &events.APIGatewayProxyResponse{
-				StatusCode: 500,
-			}, err
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
-		response = utils.CreateApiResponse(task, 201)
+		w.WriteHeader(http.StatusCreated)
+		response = utils.CreateApiResponse(task)
 	case "PUT":
 		var task models.Task
-		err := utils.ParseBody(request.Body, &task)
+		err := utils.ParseRequestBody(r, &task)
 		if err != nil {
-			return &events.APIGatewayProxyResponse{
-				StatusCode: 400,
-			}, err
+			log.Printf("Error: %v", err)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
 		}
 		err = client.TaskService.UpdateTask(id, task)
 		if err != nil {
-			return &events.APIGatewayProxyResponse{
-				StatusCode: 500,
-			}, err
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
-		response = utils.CreateApiResponse(task, 200)
+		w.WriteHeader(http.StatusOK)
+		response = utils.CreateApiResponse(task)
 	case "DELETE":
 		err := client.TaskService.DeleteTask(id)
 		if err != nil {
-			return &events.APIGatewayProxyResponse{
-				StatusCode: 500,
-			}, err
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
-		response = utils.CreateApiResponse("", 200)
+		w.WriteHeader(http.StatusOK)
+		response = utils.CreateApiResponse("")
 	}
 
-	return response, nil
+	w.Write(response)
 }
 
 func main() {
-	// Make the handler available for Remote Procedure Call by AWS Lambda
-	lambda.Start(handler)
+	utils.ServeFunction("/api/tasks", handler)
 }

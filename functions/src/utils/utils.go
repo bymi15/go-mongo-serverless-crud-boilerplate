@@ -2,30 +2,55 @@ package utils
 
 import (
 	"encoding/json"
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
 
-	"github.com/aws/aws-lambda-go/events"
+	"github.com/apex/gateway"
+	"github.com/joho/godotenv"
 )
 
-func CreateApiResponse(v interface{}, statusCode int) *events.APIGatewayProxyResponse {
-	responseBody := ""
-	if v != "" {
-		jsonBody, _ := json.Marshal(v)
-		responseBody = string(jsonBody)
-	}
-
-	return &events.APIGatewayProxyResponse{
-		StatusCode: statusCode,
-		Headers: map[string]string{
-			"Content-Type":                 "application/json",
-			"Access-Control-Allow-Origin":  "*",
-			"Access-Control-Allow-Headers": "Content-Type",
-			"Access-Control-Allow-Methods": "GET",
-		},
-		Body: responseBody,
-	}
+func SetDefaultHeaders(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
 }
 
-func ParseBody(body string, v interface{}) error {
-	bytes := []byte(body)
-	return json.Unmarshal(bytes, v)
+func CreateApiResponse(v interface{}) []byte {
+	var response []byte
+	if v != "" {
+		jsonBody, err := json.Marshal(v)
+		if err != nil {
+			log.Fatalf("An error occurred in JSON marshal. Err: %s", err)
+		}
+		response = jsonBody
+	}
+
+	return response
+}
+
+func ParseRequestBody(r *http.Request, v interface{}) error {
+	return json.NewDecoder(r.Body).Decode(v)
+}
+
+func ServeFunction(url string, handler func(http.ResponseWriter, *http.Request)) {
+	port := flag.Int("port", -1, "specify a port to use http rather than AWS Lambda")
+	flag.Parse()
+	listener := gateway.ListenAndServe
+	portStr := "n/a"
+	if *port != -1 {
+		err := godotenv.Load()
+		if err != nil {
+			log.Print("Failed to load .env file")
+		}
+		portStr = fmt.Sprintf(":%d", *port)
+		listener = http.ListenAndServe
+		http.Handle("/", http.FileServer(http.Dir("./public")))
+	}
+	http.HandleFunc(url, handler)
+
+	log.Printf("Function `%s` running on port %s...", url, portStr)
+	log.Fatal(listener(portStr, nil))
 }

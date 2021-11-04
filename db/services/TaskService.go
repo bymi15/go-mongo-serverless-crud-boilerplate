@@ -22,7 +22,7 @@ func NewTaskService(db *mongo.Database, collectionName string) TaskService {
 }
 
 func (service TaskService) GetTasks() ([]models.Task, error) {
-	var Tasks []models.Task
+	Tasks := []models.Task{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

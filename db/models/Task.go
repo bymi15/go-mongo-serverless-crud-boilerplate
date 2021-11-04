@@ -4,9 +4,9 @@ import "time"
 
 type Task struct {
 	Id          string `bson:"_id,omitempty" json:"id,omitempty"`
-	Description string `json:"description"`
-	IsComplete  bool   `json:"isComplete"`
-	DateCreated string `json:"dateCreated"`
+	Description string `bson:"description,omitempty" json:"description"`
+	IsComplete  bool   `bson:"isComplete,omitempty" json:"isComplete"`
+	DateCreated string `bson:"dateCreated,omitempty" json:"dateCreated"`
 }
 
 // Constructor
