@@ -1,9 +1,6 @@
 <h1 align="center">Go Mongo Serverless CRUD Boilerplate</h1>
 
 <p align="center">
-  <a href="https://david-dm.org/bymi15/go-mongo-serverless-crud-boilerplate" title="dependencies status">
-    <img src="https://david-dm.org/bymi15/go-mongo-serverless-crud-boilerplate/status.svg?style=flat-square"/>
-  </a>
   <a href="https://stackshare.io/bymi15/go-mongo-serverless-crud-boilerplate">
     <img src="http://img.shields.io/badge/tech-stack-0690fa.svg?style=flat" alt="stackshare" />
   </a>
@@ -90,6 +87,14 @@ In order to test the functions locally, we can run the following command:
 ```bash
 go run functions/src/<FUNCTION_NAME>/<FUNCTION_NAME>.go -port <PORT>
 ```
+
+For example:
+
+```bash
+go run functions/src/tasks/tasks.go -port 8000
+```
+
+and the function endpoint will be: `http://localhost:8000/api/tasks`
 
 ## Continuous Deployment
 
