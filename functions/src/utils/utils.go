@@ -36,21 +36,21 @@ func ParseRequestBody(r *http.Request, v interface{}) error {
 }
 
 func ServeFunction(url string, handler func(http.ResponseWriter, *http.Request)) {
-	port := flag.Int("port", -1, "specify a port to use http rather than AWS Lambda")
+	port := flag.Int("port", -1, "specify a port")
 	flag.Parse()
 	listener := gateway.ListenAndServe
-	portStr := "n/a"
+	addr := ""
 	if *port != -1 {
 		err := godotenv.Load()
 		if err != nil {
 			log.Print("Failed to load .env file")
 		}
-		portStr = fmt.Sprintf(":%d", *port)
+		addr = fmt.Sprintf(":%d", *port)
 		listener = http.ListenAndServe
 		http.Handle("/", http.FileServer(http.Dir("./public")))
 	}
 	http.HandleFunc(url, handler)
 
-	log.Printf("Function `%s` running on port %s...", url, portStr)
-	log.Fatal(listener(portStr, nil))
+	log.Printf("Function `%s` running on %s...", url, addr)
+	log.Fatal(listener(addr, nil))
 }
